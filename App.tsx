@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
+
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { Course, Source, SavedCourse } from './types';
 import { generateCourseOutline, InvalidJsonError } from './services/geminiService';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -9,6 +10,15 @@ import Loader from './components/Loader';
 import Feedback from './components/Feedback';
 import SavedCoursesModal from './components/SavedCoursesModal';
 import { SparklesIcon } from './components/icons/SparklesIcon';
+
+const suggestedTopics = [
+  'Introduction to Quantum Computing',
+  'The Renaissance: Art and Culture',
+  'Basics of Sustainable Agriculture',
+  'Understanding Blockchain Technology',
+  "A Beginner's Guide to Modern Calligraphy",
+  'The History of Jazz Music',
+];
 
 export default function App() {
   const [topic, setTopic] = useState('');
@@ -21,20 +31,25 @@ export default function App() {
   const [savedCourses, setSavedCourses] = useLocalStorage<SavedCourse[]>('savedCourses', []);
   const [isSavedCoursesModalOpen, setIsSavedCoursesModalOpen] = useState(false);
 
-  const handleGenerateCourse = useCallback(async () => {
-    if (!topic.trim()) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionsContainerRef = useRef<HTMLDivElement>(null);
+
+  const generateCourse = useCallback(async (courseTopic: string) => {
+    if (!courseTopic.trim()) {
       setError('Please enter a topic.');
       return;
     }
+    setTopic(courseTopic); // Set topic in input for consistency
 
     setIsLoading(true);
     setError(null);
     setCourse(null);
     setSources([]);
     setFeedbackSubmitted(false);
+    setShowSuggestions(false); // Hide suggestions when generation starts
 
     try {
-      const { course, sources } = await generateCourseOutline(topic);
+      const { course, sources } = await generateCourseOutline(courseTopic);
       setCourse(course);
       setSources(sources);
     } catch (e) {
@@ -49,10 +64,31 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [topic]);
+  }, []);
+
+  const handleGenerateCourse = useCallback(() => {
+    generateCourse(topic);
+  }, [topic, generateCourse]);
+
+  const handleSuggestionClick = useCallback((suggestion: string) => {
+    generateCourse(suggestion);
+  }, [generateCourse]);
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsContainerRef.current && !suggestionsContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleTopicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTopic(e.target.value);
+    if (!showSuggestions) setShowSuggestions(true);
     if(error) setError(null);
   };
   
@@ -118,16 +154,18 @@ export default function App() {
           </p>
         </div>
 
-        <div className="max-w-2xl mx-auto mb-12">
+        <div className="max-w-2xl mx-auto mb-12" ref={suggestionsContainerRef}>
           <div className="relative">
             <input
               type="text"
               value={topic}
               onChange={handleTopicChange}
               onKeyDown={handleKeyDown}
+              onFocus={() => setShowSuggestions(true)}
               placeholder="e.g., 'The History of Ancient Rome'"
               className="w-full pl-4 pr-32 py-4 text-lg bg-base-200 border border-base-300 rounded-full focus:ring-2 focus:ring-brand-secondary focus:outline-none transition-shadow"
               disabled={isLoading}
+              autoComplete="off"
             />
             <button
               onClick={handleGenerateCourse}
@@ -138,6 +176,25 @@ export default function App() {
               <span>Generate</span>
             </button>
           </div>
+
+          {showSuggestions && (
+            <div className="absolute z-10 w-full mt-2 bg-base-200 border border-base-300 rounded-lg shadow-lg overflow-hidden animate-fade-in-down max-w-2xl">
+              <h4 className="text-sm font-semibold text-text-secondary px-4 py-2 bg-base-300/50">Suggestions</h4>
+              <ul>
+                {suggestedTopics.map((suggestion) => (
+                  <li key={suggestion}>
+                    <button
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="w-full text-left px-4 py-3 text-text-primary hover:bg-brand-secondary/20 transition-colors duration-150"
+                    >
+                      {suggestion}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {error && <p className="text-red-500 mt-3 text-center">{error}</p>}
         </div>
 
@@ -182,6 +239,22 @@ export default function App() {
         onLoadCourse={handleLoadCourse}
         onDeleteCourse={handleDeleteCourse}
       />
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.5s ease-in-out forwards;
+        }
+        @keyframes fadeInDown {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-down {
+          animation: fadeInDown 0.2s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 }

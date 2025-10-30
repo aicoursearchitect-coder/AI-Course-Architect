@@ -8,6 +8,7 @@ import { BookmarkIcon } from './icons/BookmarkIcon';
 import EditableField from './EditableField';
 import { PlusIcon } from './icons/PlusIcon';
 import { TrashIcon } from './icons/TrashIcon';
+import { PencilIcon } from './icons/PencilIcon';
 
 interface CourseDisplayProps {
   course: Course;
@@ -32,6 +33,15 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, isOpen, onToggle
   const [newLessonTitle, setNewLessonTitle] = useState('');
   const [newLessonDescription, setNewLessonDescription] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  
+  const [editingDescriptionFor, setEditingDescriptionFor] = useState<number | null>(null);
+  const [currentDescription, setCurrentDescription] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) {
+      setEditingDescriptionFor(null);
+    }
+  }, [isOpen]);
 
   const handleSaveNewLesson = () => {
     if (!newLessonTitle.trim()) {
@@ -59,6 +69,12 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, isOpen, onToggle
     setNewLessonTitle('');
     setNewLessonDescription('');
     setFormError(null);
+  };
+
+  const handleSaveDescription = (lessonIndex: number) => {
+    onFieldChange(['modules', index, 'lessons', lessonIndex, 'description'], currentDescription);
+    setEditingDescriptionFor(null);
+    setCurrentDescription('');
   };
 
   return (
@@ -126,13 +142,50 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, isOpen, onToggle
                                   displayClassName="font-semibold text-text-primary w-full"
                                   inputClassName="font-semibold text-text-primary bg-base-300 rounded px-2 py-1 w-full"
                                 />
-                                <EditableField
-                                  multiline
-                                  value={lesson.description}
-                                  onSave={(newValue) => onFieldChange(['modules', index, 'lessons', lessonIndex, 'description'], newValue)}
-                                  displayClassName="text-sm text-text-secondary w-full"
-                                  inputClassName="text-sm text-text-secondary bg-base-300 rounded px-2 py-1 w-full"
-                                />
+                                {editingDescriptionFor === lessonIndex ? (
+                                  <div className="mt-2 space-y-2 animate-fade-in">
+                                    <textarea
+                                      value={currentDescription}
+                                      onChange={(e) => setCurrentDescription(e.target.value)}
+                                      className="text-sm text-text-secondary bg-base-300 rounded px-2 py-2 w-full focus:ring-2 focus:ring-brand-secondary focus:outline-none"
+                                      placeholder="Enter a one-sentence explanation..."
+                                      autoFocus
+                                      rows={2}
+                                    />
+                                    <div className="flex items-center gap-2">
+                                      <button 
+                                        onClick={() => handleSaveDescription(lessonIndex)} 
+                                        className="bg-brand-primary hover:bg-brand-secondary text-white font-semibold py-1 px-3 rounded-full text-xs transition-colors"
+                                      >
+                                        Save Explanation
+                                      </button>
+                                      <button 
+                                        onClick={() => setEditingDescriptionFor(null)} 
+                                        className="bg-base-300 hover:bg-opacity-80 text-text-secondary font-semibold py-1 px-3 rounded-full text-xs transition-colors"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1">
+                                    {lesson.description ? (
+                                      <p className="text-sm text-text-secondary">{lesson.description}</p>
+                                    ) : (
+                                      <p className="text-sm text-text-secondary/60 italic">No explanation added.</p>
+                                    )}
+                                    <button 
+                                      onClick={() => {
+                                          setCurrentDescription(lesson.description);
+                                          setEditingDescriptionFor(lessonIndex);
+                                      }}
+                                      className="text-xs font-semibold text-brand-secondary hover:underline mt-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                                    >
+                                      <PencilIcon className="inline-block w-3 h-3 mr-1"/>
+                                      {lesson.description ? 'Edit Explanation' : 'Add Explanation'}
+                                    </button>
+                                  </div>
+                                )}
                             </div>
                              <button
                               onClick={() => onDeleteLesson(lessonIndex)}
