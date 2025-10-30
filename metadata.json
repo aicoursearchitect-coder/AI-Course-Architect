@@ -1,0 +1,5 @@
+{
+  "name": "AI Course Generator",
+  "description": "An AI-powered application that crawls the web to generate comprehensive course outlines on any given topic, complete with modules, lessons, and source citations.",
+  "requestFramePermissions": []
+}
