@@ -2,16 +2,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import type { Course, Module, Lesson } from '../types';
+import type { Course, Module, Lesson, Source } from '../types';
 import { FileDownIcon } from './icons/FileDownIcon';
 import { BookmarkIcon } from './icons/BookmarkIcon';
 import EditableField from './EditableField';
 import { PlusIcon } from './icons/PlusIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { PencilIcon } from './icons/PencilIcon';
+import { LinkIcon } from './icons/LinkIcon';
 
 interface CourseDisplayProps {
   course: Course;
+  sources: Source[];
   onSaveCourse: () => void;
   isSaved: boolean;
   onCourseUpdate: (course: Course) => void;
@@ -259,10 +261,10 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, isOpen, onToggle
   );
 }
 
-const CourseDisplay: React.FC<CourseDisplayProps> = ({ course, onSaveCourse, isSaved, onCourseUpdate }) => {
+const CourseDisplay: React.FC<CourseDisplayProps> = ({ course, sources, onSaveCourse, isSaved, onCourseUpdate }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [openModules, setOpenModules] = useState<Record<number, boolean>>({ 0: true });
-  const courseContentRef = useRef<HTMLDivElement>(null);
+  const pdfExportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setOpenModules({ 0: true });
@@ -361,23 +363,18 @@ const CourseDisplay: React.FC<CourseDisplayProps> = ({ course, onSaveCourse, isS
   };
 
   const handleExportAsPdf = async () => {
-    if (!courseContentRef.current) return;
+    if (!pdfExportRef.current) return;
     setIsExporting(true);
   
     try {
-      const previousOpenState = { ...openModules };
-      handleExpandAll();
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-  
-      const canvas = await html2canvas(courseContentRef.current, {
+      const canvas = await html2canvas(pdfExportRef.current, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#111827',
+        windowWidth: pdfExportRef.current.scrollWidth,
+        windowHeight: pdfExportRef.current.scrollHeight,
       });
       
-      setOpenModules(previousOpenState);
-  
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
       
@@ -422,7 +419,7 @@ const CourseDisplay: React.FC<CourseDisplayProps> = ({ course, onSaveCourse, isS
     <div>
       <div className="bg-base-200 p-6 rounded-lg shadow-lg mb-6">
         <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4 pb-4">
-          <div ref={courseContentRef} className="w-full">
+          <div className="w-full">
             <EditableField 
               as="h2"
               value={course.title}
@@ -508,6 +505,71 @@ const CourseDisplay: React.FC<CourseDisplayProps> = ({ course, onSaveCourse, isS
           Add Module
         </button>
       </div>
+
+      {/* Hidden container for PDF export */}
+      <div 
+        ref={pdfExportRef} 
+        className="absolute left-[-9999px] top-0 w-[900px] p-10 bg-base-100 text-text-primary font-sans"
+        aria-hidden="true"
+      >
+        <div className="mb-10 text-center">
+          <h2 className="text-4xl font-extrabold text-text-primary mb-3">{course.title}</h2>
+          <p className="text-text-secondary text-lg">{course.description}</p>
+        </div>
+
+        <div className="space-y-6">
+          {course.modules.map((module, moduleIndex) => (
+            <div key={moduleIndex} className="bg-base-200 rounded-lg p-6 break-inside-avoid">
+              <h3 className="text-2xl font-bold text-brand-secondary mb-2">
+                Module {moduleIndex + 1}: {module.title}
+              </h3>
+              <p className="text-text-secondary mb-4">{module.description}</p>
+              <div className="border-t border-base-300 pt-4">
+                <ul className="space-y-4">
+                  {module.lessons.map((lesson, lessonIndex) => (
+                    <li key={lessonIndex} className="flex items-start">
+                      <div className="flex-shrink-0 h-6 w-6 rounded-full bg-brand-primary/50 flex items-center justify-center mr-4 mt-1">
+                        <span className="text-xs font-bold text-white">{moduleIndex + 1}.{lessonIndex + 1}</span>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-text-primary">{lesson.title}</h4>
+                        <p className="text-sm text-text-secondary mt-1">{lesson.description}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {sources && sources.length > 0 && (
+          <div className="mt-12 pt-8 border-t-2 border-base-300 break-before-page">
+            <h3 className="text-3xl font-bold mb-6 flex items-center gap-3">
+              <LinkIcon className="w-7 h-7" />
+              Sources
+            </h3>
+            <ul className="space-y-5">
+              {sources.map((source, index) => (
+                <li key={index} className="break-inside-avoid">
+                  <p className="text-lg font-semibold text-brand-secondary break-words">
+                    {index + 1}. {source.title || new URL(source.uri).hostname}
+                  </p>
+                  <a href={source.uri} className="text-sm text-text-secondary/80 hover:underline break-all" target="_blank" rel="noopener noreferrer">
+                    {source.uri}
+                  </a>
+                  {source.snippet && (
+                    <blockquote className="mt-2 pl-4 text-base text-text-secondary italic border-l-2 border-base-300">
+                      "{source.snippet}"
+                    </blockquote>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 };

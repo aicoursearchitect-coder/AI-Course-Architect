@@ -206,6 +206,7 @@ export default function App() {
               <div className="lg:col-span-2">
                 <CourseDisplay 
                   course={course}
+                  sources={sources}
                   onSaveCourse={handleSaveCourse}
                   isSaved={isCurrentCourseSaved}
                   onCourseUpdate={handleCourseUpdate}
