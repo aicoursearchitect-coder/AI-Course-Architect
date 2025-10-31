@@ -1,4 +1,6 @@
+
 import { GoogleGenAI } from "@google/genai";
+// Fix: Import the Source type to use in the return type.
 import type { Course, Source } from '../types';
 
 if (!process.env.API_KEY) {
@@ -49,7 +51,8 @@ The JSON object must follow this exact structure:
 }
 `;
 
-export async function generateCourseOutline(topic: string): Promise<{ course: Course; sources: Source[] }> {
+// Fix: Update the function to return sources along with the course.
+export async function generateCourseOutline(topic: string): Promise<{ course: Course, sources: Source[] }> {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
@@ -102,34 +105,19 @@ export async function generateCourseOutline(topic: string): Promise<{ course: Co
           );
         }
 
-        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
-        
-        const sourceMap = new Map<string, Source>();
-
-        for (const chunk of groundingChunks) {
-            if (chunk.web?.uri) {
-                const { uri, title } = chunk.web;
-                // Snippet is often in retrievedContext, which is at the same level as `web`.
-                const snippet = (chunk as any).retrievedContext?.text;
-
-                if (sourceMap.has(uri)) {
-                    const existing = sourceMap.get(uri)!;
-                    if (!existing.snippet && snippet) {
-                        existing.snippet = snippet;
-                    }
-                    if (!existing.title && title) {
-                        existing.title = title;
-                    }
-                } else {
-                    sourceMap.set(uri, {
-                        uri,
-                        title: title || '',
-                        snippet: snippet,
+        // Fix: Extract sources from the grounding metadata.
+        const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+        const sources: Source[] = [];
+        if (groundingMetadata?.groundingChunks) {
+            for (const chunk of groundingMetadata.groundingChunks) {
+                if (chunk.web) {
+                    sources.push({
+                        uri: chunk.web.uri,
+                        title: chunk.web.title,
                     });
                 }
             }
         }
-        const sources: Source[] = Array.from(sourceMap.values());
 
         return { course, sources };
 

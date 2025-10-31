@@ -1,19 +1,16 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import type { Course, Module, Lesson, Source } from '../types';
+import type { Course, Module, Lesson } from '../types';
 import { FileDownIcon } from './icons/FileDownIcon';
 import { BookmarkIcon } from './icons/BookmarkIcon';
 import EditableField from './EditableField';
 import { PlusIcon } from './icons/PlusIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { PencilIcon } from './icons/PencilIcon';
-import { LinkIcon } from './icons/LinkIcon';
 
 interface CourseDisplayProps {
   course: Course;
-  sources: Source[];
   onSaveCourse: () => void;
   isSaved: boolean;
   onCourseUpdate: (course: Course) => void;
@@ -144,50 +141,50 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, isOpen, onToggle
                                   displayClassName="font-semibold text-text-primary w-full"
                                   inputClassName="font-semibold text-text-primary bg-base-300 rounded px-2 py-1 w-full"
                                 />
-                                {editingDescriptionFor === lessonIndex ? (
-                                  <div className="mt-2 space-y-2 animate-fade-in">
-                                    <textarea
-                                      value={currentDescription}
-                                      onChange={(e) => setCurrentDescription(e.target.value)}
-                                      className="text-sm text-text-secondary bg-base-300 rounded px-2 py-2 w-full focus:ring-2 focus:ring-brand-secondary focus:outline-none"
-                                      placeholder="Enter a one-sentence explanation..."
-                                      autoFocus
-                                      rows={2}
-                                    />
-                                    <div className="flex items-center gap-2">
-                                      <button 
-                                        onClick={() => handleSaveDescription(lessonIndex)} 
-                                        className="bg-brand-primary hover:bg-brand-secondary text-white font-semibold py-1 px-3 rounded-full text-xs transition-colors"
-                                      >
-                                        Save Explanation
-                                      </button>
-                                      <button 
-                                        onClick={() => setEditingDescriptionFor(null)} 
-                                        className="bg-base-300 hover:bg-opacity-80 text-text-secondary font-semibold py-1 px-3 rounded-full text-xs transition-colors"
-                                      >
-                                        Cancel
-                                      </button>
+                                <div className="mt-1">
+                                  {editingDescriptionFor === lessonIndex ? (
+                                    <div className="mt-2 space-y-2 animate-fade-in">
+                                      <textarea
+                                        value={currentDescription}
+                                        onChange={(e) => setCurrentDescription(e.target.value)}
+                                        className="text-sm text-text-secondary bg-base-300 rounded px-2 py-2 w-full focus:ring-2 focus:ring-brand-secondary focus:outline-none"
+                                        placeholder="Enter a one-sentence explanation..."
+                                        autoFocus
+                                        rows={2}
+                                      />
+                                      <div className="flex items-center gap-2">
+                                        <button 
+                                          onClick={() => handleSaveDescription(lessonIndex)} 
+                                          className="bg-brand-primary hover:bg-brand-secondary text-white font-semibold py-1 px-3 rounded-full text-xs transition-colors"
+                                        >
+                                          Save
+                                        </button>
+                                        <button 
+                                          onClick={() => setEditingDescriptionFor(null)} 
+                                          className="bg-base-300 hover:bg-opacity-80 text-text-secondary font-semibold py-1 px-3 rounded-full text-xs transition-colors"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : (
-                                  <div className="mt-1">
-                                    {lesson.description ? (
-                                      <p className="text-sm text-text-secondary">{lesson.description}</p>
-                                    ) : (
-                                      <p className="text-sm text-text-secondary/60 italic">No explanation added.</p>
-                                    )}
-                                    <button 
+                                  ) : (
+                                    <div
                                       onClick={() => {
-                                          setCurrentDescription(lesson.description);
-                                          setEditingDescriptionFor(lessonIndex);
+                                        setCurrentDescription(lesson.description);
+                                        setEditingDescriptionFor(lessonIndex);
                                       }}
-                                      className="text-xs font-semibold text-brand-secondary hover:underline mt-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                                      className="relative group cursor-pointer p-1 -m-1 rounded-md hover:bg-base-300/50 transition-colors"
+                                      title="Click to edit explanation"
                                     >
-                                      <PencilIcon className="inline-block w-3 h-3 mr-1"/>
-                                      {lesson.description ? 'Edit Explanation' : 'Add Explanation'}
-                                    </button>
-                                  </div>
-                                )}
+                                      {lesson.description ? (
+                                        <p className="text-sm text-text-secondary">{lesson.description}</p>
+                                      ) : (
+                                        <p className="text-sm text-text-secondary/60 italic">Click to add an explanation.</p>
+                                      )}
+                                      <PencilIcon className="absolute top-1/2 right-1 -translate-y-1/2 w-4 h-4 text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                  )}
+                                </div>
                             </div>
                              <button
                               onClick={() => onDeleteLesson(lessonIndex)}
@@ -261,14 +258,28 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, isOpen, onToggle
   );
 }
 
-const CourseDisplay: React.FC<CourseDisplayProps> = ({ course, sources, onSaveCourse, isSaved, onCourseUpdate }) => {
+const CourseDisplay: React.FC<CourseDisplayProps> = ({ course, onSaveCourse, isSaved, onCourseUpdate }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [openModules, setOpenModules] = useState<Record<number, boolean>>({ 0: true });
   const pdfExportRef = useRef<HTMLDivElement>(null);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setOpenModules({ 0: true });
   }, [course]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+            setIsExportMenuOpen(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleToggleModule = (index: number) => {
     setOpenModules(prev => ({ ...prev, [index]: !prev[index] }));
@@ -360,11 +371,90 @@ const CourseDisplay: React.FC<CourseDisplayProps> = ({ course, sources, onSaveCo
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    setIsExportMenuOpen(false);
+  };
+
+  const handleExportAsTxt = () => {
+    let content = `Course Title: ${course.title}\n\n`;
+    content += `Description: ${course.description}\n\n`;
+    content += '--------------------------------------------------\n\n';
+
+    course.modules.forEach((module, moduleIndex) => {
+        content += `Module ${moduleIndex + 1}: ${module.title}\n`;
+        content += `Description: ${module.description}\n\n`;
+        
+        module.lessons.forEach((lesson, lessonIndex) => {
+            content += `  Lesson ${moduleIndex + 1}.${lessonIndex + 1}: ${lesson.title}\n`;
+            content += `  Description: ${lesson.description}\n\n`;
+        });
+        
+        content += '--------------------------------------------------\n\n';
+    });
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `course-${slugify(course.title || 'untitled')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setIsExportMenuOpen(false);
+  };
+
+  const handleExportAsDocx = () => {
+      const styles = `
+          <style>
+              body { font-family: sans-serif; line-height: 1.5; }
+              h1 { color: #3b82f6; font-size: 24pt; }
+              h2 { color: #1e40af; font-size: 18pt; border-bottom: 1px solid #eeeeee; padding-bottom: 5px; margin-top: 2em; }
+              h3 { color: #374151; font-size: 14pt; }
+              p { font-size: 12pt; }
+          </style>
+      `;
+
+      let content = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="UTF-8">
+              <title>${course.title}</title>
+              ${styles}
+          </head>
+          <body>
+              <h1>${course.title}</h1>
+              <p>${course.description}</p>
+      `;
+
+      course.modules.forEach((module, moduleIndex) => {
+          content += `<h2>Module ${moduleIndex + 1}: ${module.title}</h2>`;
+          content += `<p>${module.description}</p>`;
+          
+          module.lessons.forEach((lesson, lessonIndex) => {
+              content += `<h3>Lesson ${moduleIndex + 1}.${lessonIndex + 1}: ${lesson.title}</h3>`;
+              content += `<p>${lesson.description}</p>`;
+          });
+      });
+
+      content += '</body></html>';
+
+      const blob = new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `course-${slugify(course.title || 'untitled')}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setIsExportMenuOpen(false);
   };
 
   const handleExportAsPdf = async () => {
     if (!pdfExportRef.current) return;
     setIsExporting(true);
+    setIsExportMenuOpen(false);
   
     try {
       const canvas = await html2canvas(pdfExportRef.current, {
@@ -446,24 +536,35 @@ const CourseDisplay: React.FC<CourseDisplayProps> = ({ course, sources, onSaveCo
               <BookmarkIcon className="h-4 w-4" />
               <span>{isSaved ? 'Saved' : 'Save'}</span>
             </button>
-            <button
-              onClick={handleSaveAsJson}
-              disabled={isExporting}
-              title="Save as JSON"
-              className="bg-base-300 hover:bg-opacity-80 text-text-primary font-semibold py-2 px-4 rounded-full flex items-center gap-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            >
-              <FileDownIcon className="h-4 w-4" />
-              <span>JSON</span>
-            </button>
-            <button
-              onClick={handleExportAsPdf}
-              disabled={isExporting}
-              title="Export as PDF"
-              className="bg-brand-primary hover:bg-brand-secondary text-white font-semibold py-2 px-4 rounded-full flex items-center gap-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            >
-              <FileDownIcon className="h-4 w-4" />
-              <span>{isExporting ? 'Exporting...' : 'PDF'}</span>
-            </button>
+            <div className="relative" ref={exportMenuRef}>
+                <button
+                  onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                  disabled={isExporting}
+                  title="Export course"
+                  className="bg-brand-primary hover:bg-brand-secondary text-white font-semibold py-2 px-4 rounded-full flex items-center gap-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  <FileDownIcon className="h-4 w-4" />
+                  <span>{isExporting ? 'Exporting...' : 'Export'}</span>
+                </button>
+                {isExportMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-base-300 rounded-md shadow-lg z-20 animate-fade-in-down-fast">
+                        <ul className="py-1">
+                            <li>
+                                <button onClick={handleSaveAsJson} className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-brand-secondary/20 transition-colors">Save as JSON</button>
+                            </li>
+                             <li>
+                                <button onClick={handleExportAsTxt} className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-brand-secondary/20 transition-colors">Export as Text (.txt)</button>
+                            </li>
+                             <li>
+                                <button onClick={handleExportAsDocx} className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-brand-secondary/20 transition-colors">Export as Word (.docx)</button>
+                            </li>
+                            <li>
+                                <button onClick={handleExportAsPdf} className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-brand-secondary/20 transition-colors">Export as PDF</button>
+                            </li>
+                        </ul>
+                    </div>
+                )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-4 pt-4 border-t border-base-300">
@@ -542,34 +643,16 @@ const CourseDisplay: React.FC<CourseDisplayProps> = ({ course, sources, onSaveCo
             </div>
           ))}
         </div>
-
-        {sources && sources.length > 0 && (
-          <div className="mt-12 pt-8 border-t-2 border-base-300 break-before-page">
-            <h3 className="text-3xl font-bold mb-6 flex items-center gap-3">
-              <LinkIcon className="w-7 h-7" />
-              Sources
-            </h3>
-            <ul className="space-y-5">
-              {sources.map((source, index) => (
-                <li key={index} className="break-inside-avoid">
-                  <p className="text-lg font-semibold text-brand-secondary break-words">
-                    {index + 1}. {source.title || new URL(source.uri).hostname}
-                  </p>
-                  <a href={source.uri} className="text-sm text-text-secondary/80 hover:underline break-all" target="_blank" rel="noopener noreferrer">
-                    {source.uri}
-                  </a>
-                  {source.snippet && (
-                    <blockquote className="mt-2 pl-4 text-base text-text-secondary italic border-l-2 border-base-300">
-                      "{source.snippet}"
-                    </blockquote>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
-
+      <style>{`
+        @keyframes fadeInDownFast {
+          from { opacity: 0; transform: translateY(-5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-down-fast {
+          animation: fadeInDownFast 0.15s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };

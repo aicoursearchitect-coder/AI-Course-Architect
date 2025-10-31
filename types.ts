@@ -1,3 +1,4 @@
+
 export interface Lesson {
   title: string;
   description: string;
@@ -15,16 +16,16 @@ export interface Course {
   modules: Module[];
 }
 
-export interface Source {
-  uri: string;
-  title: string;
-  snippet?: string;
-}
-
 export interface SavedCourse {
   id: string;
   topic: string;
   savedAt: string;
   course: Course;
-  sources: Source[];
+}
+
+// Fix: Add and export the Source type for grounding metadata.
+export interface Source {
+  uri: string;
+  title?: string;
+  snippet?: string;
 }

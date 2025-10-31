@@ -1,15 +1,17 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import type { Course, Source, SavedCourse } from './types';
+// Fix: Import Source type
+import type { Course, SavedCourse, Source } from './types';
 import { generateCourseOutline, InvalidJsonError } from './services/geminiService';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Header from './components/Header';
 import CourseDisplay from './components/CourseDisplay';
-import SourceList from './components/SourceList';
 import Loader from './components/Loader';
 import Feedback from './components/Feedback';
 import SavedCoursesModal from './components/SavedCoursesModal';
 import { SparklesIcon } from './components/icons/SparklesIcon';
+// Fix: Import SourceList component to display sources
+import SourceList from './components/SourceList';
 
 const suggestedTopics = [
   'Introduction to Quantum Computing',
@@ -23,6 +25,7 @@ const suggestedTopics = [
 export default function App() {
   const [topic, setTopic] = useState('');
   const [course, setCourse] = useState<Course | null>(null);
+  // Fix: Add state for sources
   const [sources, setSources] = useState<Source[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,11 +47,13 @@ export default function App() {
     setIsLoading(true);
     setError(null);
     setCourse(null);
+    // Fix: Reset sources on new generation
     setSources([]);
     setFeedbackSubmitted(false);
     setShowSuggestions(false); // Hide suggestions when generation starts
 
     try {
+      // Fix: Get both course and sources from the service
       const { course, sources } = await generateCourseOutline(courseTopic);
       setCourse(course);
       setSources(sources);
@@ -110,15 +115,15 @@ export default function App() {
       topic: topic || course.title, // Use input topic or fall back to course title
       savedAt: new Date().toISOString(),
       course,
-      sources,
     };
     setSavedCourses([...savedCourses, newSavedCourse]);
   };
 
   const handleLoadCourse = (savedCourse: SavedCourse) => {
     setCourse(savedCourse.course);
-    setSources(savedCourse.sources);
     setTopic(savedCourse.topic);
+    // Fix: Clear sources when loading a saved course as they are not saved
+    setSources([]);
     setFeedbackSubmitted(false); // Reset feedback for loaded course
     setIsSavedCoursesModalOpen(false); // Close modal on load
   };
@@ -201,31 +206,29 @@ export default function App() {
         {isLoading && <Loader />}
 
         {!isLoading && course && (
-          <div className="animate-fade-in">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-              <div className="lg:col-span-2">
-                <CourseDisplay 
-                  course={course}
-                  sources={sources}
-                  onSaveCourse={handleSaveCourse}
-                  isSaved={isCurrentCourseSaved}
-                  onCourseUpdate={handleCourseUpdate}
-                />
-              </div>
-              <div>
-                <SourceList sources={sources} />
+          // Fix: Use a grid layout to display the course and sources side-by-side
+          <div className="animate-fade-in grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+            <div className="lg:col-span-2">
+              <CourseDisplay 
+                course={course}
+                onSaveCourse={handleSaveCourse}
+                isSaved={isCurrentCourseSaved}
+                onCourseUpdate={handleCourseUpdate}
+              />
+              
+              <div className="mt-12">
+                {!feedbackSubmitted ? (
+                  <Feedback onSubmit={handleFeedbackSubmit} />
+                ) : (
+                  <div className="bg-base-200 p-8 rounded-lg text-center transition-all duration-500">
+                    <h3 className="text-xl font-bold text-text-primary">Thank you for your feedback!</h3>
+                    <p className="text-text-secondary mt-1">Your input helps us improve.</p>
+                  </div>
+                )}
               </div>
             </div>
-            
-            <div className="mt-12">
-              {!feedbackSubmitted ? (
-                <Feedback onSubmit={handleFeedbackSubmit} />
-              ) : (
-                <div className="bg-base-200 p-8 rounded-lg text-center transition-all duration-500">
-                  <h3 className="text-xl font-bold text-text-primary">Thank you for your feedback!</h3>
-                  <p className="text-text-secondary mt-1">Your input helps us improve.</p>
-                </div>
-              )}
+            <div className="lg:col-span-1">
+              <SourceList sources={sources} />
             </div>
           </div>
         )}
