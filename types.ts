@@ -23,7 +23,7 @@ export interface SavedCourse {
   course: Course;
 }
 
-// Fix: Add and export the Source type for grounding metadata.
+// Fix: Add Source type definition
 export interface Source {
   uri: string;
   title?: string;

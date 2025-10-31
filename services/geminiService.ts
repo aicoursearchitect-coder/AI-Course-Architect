@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
-// Fix: Import the Source type to use in the return type.
+// Fix: Import the Source type
 import type { Course, Source } from '../types';
 
 if (!process.env.API_KEY) {
@@ -51,7 +51,7 @@ The JSON object must follow this exact structure:
 }
 `;
 
-// Fix: Update the function to return sources along with the course.
+// Fix: Update function to return both course and sources
 export async function generateCourseOutline(topic: string): Promise<{ course: Course, sources: Source[] }> {
     try {
         const response = await ai.models.generateContent({
@@ -105,20 +105,21 @@ export async function generateCourseOutline(topic: string): Promise<{ course: Co
           );
         }
 
-        // Fix: Extract sources from the grounding metadata.
-        const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+        // Fix: Extract sources from grounding metadata
         const sources: Source[] = [];
-        if (groundingMetadata?.groundingChunks) {
-            for (const chunk of groundingMetadata.groundingChunks) {
-                if (chunk.web) {
-                    sources.push({
-                        uri: chunk.web.uri,
-                        title: chunk.web.title,
-                    });
-                }
-            }
-        }
+        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
 
+        if (groundingChunks && Array.isArray(groundingChunks)) {
+          for (const chunk of groundingChunks) {
+            if (chunk.web && chunk.web.uri) {
+              sources.push({
+                uri: chunk.web.uri,
+                title: chunk.web.title,
+              });
+            }
+          }
+        }
+        
         return { course, sources };
 
     } catch (error) {

@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 // Fix: Import Source type
 import type { Course, SavedCourse, Source } from './types';
 import { generateCourseOutline, InvalidJsonError } from './services/geminiService';
@@ -9,18 +9,9 @@ import CourseDisplay from './components/CourseDisplay';
 import Loader from './components/Loader';
 import Feedback from './components/Feedback';
 import SavedCoursesModal from './components/SavedCoursesModal';
-import { SparklesIcon } from './components/icons/SparklesIcon';
 // Fix: Import SourceList component to display sources
 import SourceList from './components/SourceList';
-
-const suggestedTopics = [
-  'Introduction to Quantum Computing',
-  'The Renaissance: Art and Culture',
-  'Basics of Sustainable Agriculture',
-  'Understanding Blockchain Technology',
-  "A Beginner's Guide to Modern Calligraphy",
-  'The History of Jazz Music',
-];
+import { SparklesIcon } from './components/icons/SparklesIcon';
 
 export default function App() {
   const [topic, setTopic] = useState('');
@@ -33,9 +24,6 @@ export default function App() {
   
   const [savedCourses, setSavedCourses] = useLocalStorage<SavedCourse[]>('savedCourses', []);
   const [isSavedCoursesModalOpen, setIsSavedCoursesModalOpen] = useState(false);
-
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const suggestionsContainerRef = useRef<HTMLDivElement>(null);
 
   const generateCourse = useCallback(async (courseTopic: string) => {
     if (!courseTopic.trim()) {
@@ -50,10 +38,9 @@ export default function App() {
     // Fix: Reset sources on new generation
     setSources([]);
     setFeedbackSubmitted(false);
-    setShowSuggestions(false); // Hide suggestions when generation starts
 
     try {
-      // Fix: Get both course and sources from the service
+      // Fix: Handle new return shape from service
       const { course, sources } = await generateCourseOutline(courseTopic);
       setCourse(course);
       setSources(sources);
@@ -75,25 +62,8 @@ export default function App() {
     generateCourse(topic);
   }, [topic, generateCourse]);
 
-  const handleSuggestionClick = useCallback((suggestion: string) => {
-    generateCourse(suggestion);
-  }, [generateCourse]);
-  
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (suggestionsContainerRef.current && !suggestionsContainerRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
   const handleTopicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTopic(e.target.value);
-    if (!showSuggestions) setShowSuggestions(true);
     if(error) setError(null);
   };
   
@@ -122,7 +92,7 @@ export default function App() {
   const handleLoadCourse = (savedCourse: SavedCourse) => {
     setCourse(savedCourse.course);
     setTopic(savedCourse.topic);
-    // Fix: Clear sources when loading a saved course as they are not saved
+    // Fix: Clear sources when loading a course, as they are not saved.
     setSources([]);
     setFeedbackSubmitted(false); // Reset feedback for loaded course
     setIsSavedCoursesModalOpen(false); // Close modal on load
@@ -159,14 +129,13 @@ export default function App() {
           </p>
         </div>
 
-        <div className="max-w-2xl mx-auto mb-12" ref={suggestionsContainerRef}>
+        <div className="max-w-2xl mx-auto mb-12">
           <div className="relative">
             <input
               type="text"
               value={topic}
               onChange={handleTopicChange}
               onKeyDown={handleKeyDown}
-              onFocus={() => setShowSuggestions(true)}
               placeholder="e.g., 'The History of Ancient Rome'"
               className="w-full pl-4 pr-32 py-4 text-lg bg-base-200 border border-base-300 rounded-full focus:ring-2 focus:ring-brand-secondary focus:outline-none transition-shadow"
               disabled={isLoading}
@@ -182,53 +151,36 @@ export default function App() {
             </button>
           </div>
 
-          {showSuggestions && (
-            <div className="absolute z-10 w-full mt-2 bg-base-200 border border-base-300 rounded-lg shadow-lg overflow-hidden animate-fade-in-down max-w-2xl">
-              <h4 className="text-sm font-semibold text-text-secondary px-4 py-2 bg-base-300/50">Suggestions</h4>
-              <ul>
-                {suggestedTopics.map((suggestion) => (
-                  <li key={suggestion}>
-                    <button
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      className="w-full text-left px-4 py-3 text-text-primary hover:bg-brand-secondary/20 transition-colors duration-150"
-                    >
-                      {suggestion}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           {error && <p className="text-red-500 mt-3 text-center">{error}</p>}
         </div>
 
         {isLoading && <Loader />}
 
         {!isLoading && course && (
-          // Fix: Use a grid layout to display the course and sources side-by-side
-          <div className="animate-fade-in grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-            <div className="lg:col-span-2">
-              <CourseDisplay 
-                course={course}
-                onSaveCourse={handleSaveCourse}
-                isSaved={isCurrentCourseSaved}
-                onCourseUpdate={handleCourseUpdate}
-              />
-              
-              <div className="mt-12">
-                {!feedbackSubmitted ? (
-                  <Feedback onSubmit={handleFeedbackSubmit} />
-                ) : (
-                  <div className="bg-base-200 p-8 rounded-lg text-center transition-all duration-500">
-                    <h3 className="text-xl font-bold text-text-primary">Thank you for your feedback!</h3>
-                    <p className="text-text-secondary mt-1">Your input helps us improve.</p>
-                  </div>
-                )}
+          <div className="animate-fade-in">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+              <div className="lg:col-span-2">
+                <CourseDisplay 
+                  course={course}
+                  onSaveCourse={handleSaveCourse}
+                  isSaved={isCurrentCourseSaved}
+                  onCourseUpdate={handleCourseUpdate}
+                />
+                
+                <div className="mt-12">
+                  {!feedbackSubmitted ? (
+                    <Feedback onSubmit={handleFeedbackSubmit} />
+                  ) : (
+                    <div className="bg-base-200 p-8 rounded-lg text-center transition-all duration-500">
+                      <h3 className="text-xl font-bold text-text-primary">Thank you for your feedback!</h3>
+                      <p className="text-text-secondary mt-1">Your input helps us improve.</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="lg:col-span-1">
-              <SourceList sources={sources} />
+              <div className="lg:col-span-1">
+                {sources.length > 0 && <SourceList sources={sources} />}
+              </div>
             </div>
           </div>
         )}
