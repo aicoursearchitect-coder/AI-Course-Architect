@@ -76,6 +76,21 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, isOpen, onToggle
     setCurrentDescription('');
   };
 
+  const titlePrefix = `Module ${index + 1}`;
+  const lowerCasePrefix = titlePrefix.toLowerCase();
+  const lowerCaseTitle = module.title.trim().toLowerCase();
+
+  let titleForEditing = module.title;
+  // Intelligently strip the prefix "Module X" or "Module X:" for editing to avoid duplication.
+  if (lowerCaseTitle.startsWith(lowerCasePrefix)) {
+      const rest = module.title.substring(lowerCasePrefix.length).trim();
+      if (rest.startsWith(':')) {
+          titleForEditing = rest.substring(1).trim();
+      } else {
+          titleForEditing = rest;
+      }
+  }
+
   return (
     <div className="bg-base-200 rounded-lg shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg hover:ring-2 hover:ring-brand-secondary/50">
         <details className="group" open={isOpen}>
@@ -92,15 +107,16 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, isOpen, onToggle
               }}
             >
                 <div className="w-full mr-4">
-                    <h3 className="text-xl font-bold text-brand-secondary">
-                      <EditableField 
-                        value={`Module ${index + 1}: ${module.title}`}
-                        onSave={(newValue) => {
-                          const newTitle = newValue.replace(`Module ${index + 1}: `, '').trim();
-                          onFieldChange(['modules', index, 'title'], newTitle)
-                        }}
-                        displayClassName="w-full"
-                        inputClassName="text-xl font-bold text-brand-secondary bg-base-300 rounded px-2 py-1 w-full"
+                    <h3 className="text-xl font-bold flex items-baseline gap-2">
+                      <span className="text-brand-secondary whitespace-nowrap">
+                        {`${titlePrefix}:`}
+                      </span>
+                      <EditableField
+                        as="span"
+                        value={titleForEditing}
+                        onSave={(newValue) => onFieldChange(['modules', index, 'title'], newValue)}
+                        displayClassName="text-text-primary w-full"
+                        inputClassName="text-xl font-bold text-text-primary bg-base-300 rounded px-2 py-1 w-full"
                       />
                     </h3>
                     <EditableField
